@@ -1177,12 +1177,29 @@ class HFLM(TemplateLM):
                         cont_toks, dtype=torch.long, device=self.device
                     ).unsqueeze(0)  # [1, seq]
                     max_equal = (greedy_tokens == cont_toks).all()
+                    
+                    logits = logits.expand(-1, cont_toks.size(1), -1)  
+
+                    # Print shapes after expanding logits
+					eval_logger.info(f"logits shape after expand: {logits.shape}")
+
+                    # Ensure cont_toks has the correct shape
+                    cont_toks = cont_toks.unsqueeze(-1)  # [1, 2, 1]
+
+                    # Print shapes after unsqueeze
+                    eval_logger.info(f"cont_toks shape after unsqueeze: {cont_toks.shape}")
+
+                    # Perform the gather operation
+                    logits = torch.gather(logits, 2, cont_toks).squeeze(-1)  # [1, 2]
+
+                    # Print the shape of logits after gather
+                    eval_logger.info(f"logits shape after gather: {logits.shape}")
 
                     # Obtain log-probs at the corresponding continuation token indices
                     # last_token_slice = logits[:, -1, :].squeeze(0).tolist()
-                    logits = torch.gather(logits, 2, cont_toks.unsqueeze(-1)).squeeze(
-                        -1
-                    )  # [1, seq]
+                    # logits = torch.gather(logits, 2, cont_toks.unsqueeze(-1)).squeeze(
+                    #     -1
+                    # )  # [1, seq]
 
                     # Answer: (log prob, is-exact-match)
                     answer = (float(logits.sum()), bool(max_equal))
